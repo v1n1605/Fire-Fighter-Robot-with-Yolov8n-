@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InfernoGuard Dashboard - api_robot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    h1, h3 {
+      margin-top: 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+    }
+    .label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .value {
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+    .badge-AMAN {
+      color: #4ade80;
+    }
+    .badge-BAHAYA {
+      color: #f87171;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #334155;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #0f172a;
+      color: #cbd5e1;
+    }
+    img.preview {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>InfernoGuard Monitoring (Database: api_robot)</h1>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Sensor Api</div>
+      <div class="value" id="flame">-</div>
+    </div>
+    <div class="card">
+      <div class="label">Status Alert</div>
+      <div class="value" id="level">-</div>
+    </div>
+    <div class="card">
+      <div class="label">Mode Siklus</div>
+      <div class="value" id="mode">-</div>
+    </div>
+    <div class="card">
+      <div class="label">Hasil Deteksi Terakhir</div>
+      <div class="value" id="result">-</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Tangkapan Terbaru</div>
+      <div id="preview-wrap" style="margin-top:10px;">
+        <span id="capture-time">-</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Ringkasan Riwayat Api</div>
+      <p>Total Kejadian: <strong id="total-kejadian">0</strong></p>
+      <p>Rata-rata Besaran Api: <strong id="rata-besaran">0</strong>%</p>
+      <p>Maksimum Besaran Api: <strong id="max-besaran">0</strong>%</p>
+    </div>
+  </div>
+
+  <h3>Riwayat Deteksi Api (fire_history)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tanggal</th>
+        <th>Waktu</th>
+        <th>Besaran Api (%)</th>
+        <th>Path Gambar</th>
+      </tr>
+    </thead>
+    <tbody id="history-body"></tbody>
+  </table>
+
+  <script>
+    async function refreshData() {
+      try {
+        const stRes = await fetch('/api/status');
+        const st = await stRes.json();
+
+        document.getElementById('flame').textContent = st.flame_detected ? 'ADA API' : 'TIDAK ADA API';
+
+        const alertVal = st.alert_level === 'BAHAYA' ? 'BAHAYA' : 'AMAN';
+        const lvlEl = document.getElementById('level');
+        lvlEl.textContent = alertVal;
+        lvlEl.className = `value badge-${alertVal}`;
+
+        document.getElementById('mode').textContent = st.status || '-';
+        document.getElementById('result').textContent = st.latest_result || '-';
+
+        const wrap = document.getElementById('preview-wrap');
+        if (st.latest_image) {
+          wrap.innerHTML = `
+            <img class="preview" src="${st.latest_image}" alt="Latest Capture" />
+            <div style="margin-top:6px;color:#94a3b8;font-size:12px;">Waktu: ${st.latest_capture_time || '-'}</div>
+          `;
+        } else {
+          wrap.innerHTML = `<span>Belum ada tangkapan</span>`;
+        }
+
+        const histRes = await fetch('/api/history');
+        const hist = await histRes.json();
+        document.getElementById('total-kejadian').textContent = hist.summary.total_kejadian;
+        document.getElementById('rata-besaran').textContent = hist.summary.rata_besaran;
+        document.getElementById('max-besaran').textContent = hist.summary.max_besaran;
+
+        const tbody = document.getElementById('history-body');
+        tbody.innerHTML = (hist.history || []).map(row => `
+          <tr>
+            <td>${row.id}</td>
+            <td>${row.tanggal}</td>
+            <td>${row.waktu}</td>
+            <td>${row.besaran_api}</td>
+            <td>${row.gambar_path}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    refreshData();
+    setInterval(refreshData, 2000);
+  </script>
+</body>
+</html>

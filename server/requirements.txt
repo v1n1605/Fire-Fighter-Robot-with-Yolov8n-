@@ -1,0 +1,9 @@
+flask
+flask-cors
+huggingface_hub
+mysql-connector-python
+numpy
+paho-mqtt
+requests
+opencv-python
+ultralytics
